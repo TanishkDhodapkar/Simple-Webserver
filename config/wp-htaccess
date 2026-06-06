@@ -1,0 +1,35 @@
+# ==========================================
+# 1. WORDPRESS CORE ROUTING
+# ==========================================
+# BEGIN WordPress
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+# END WordPress
+
+# ==========================================
+# 2. SECURITY HEADERS
+# ==========================================
+# Adjust Content-Security-Policy for your site after testing.
+Header always set Content-Security-Policy "default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; base-uri 'self'; form-action 'self';"
+Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+Header always set Cross-Origin-Resource-Policy "same-origin"
+Header always set Cross-Origin-Opener-Policy "same-origin"
+Header unset X-Powered-By
+
+# ==========================================
+# 3. FILE & DIRECTORY HARDENING
+# ==========================================
+Options -Indexes
+
+<FilesMatch "^(xmlrpc\.php|wp-config\.php|\.htaccess)$">
+    Require all denied
+</FilesMatch>
