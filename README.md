@@ -43,7 +43,6 @@ ADMIN_EMAIL="admin@yoursite.com"
 SSH_PORT="55022"
 ```
 
-> **Do not commit real passwords.** Set `DB_PASS` on the server directly, or use an `.env` file (already in `.gitignore`).
 
 ### 2. Clone on the server and run
 
@@ -54,7 +53,7 @@ chmod +x setup.sh
 sudo ./setup.sh
 ```
 
-The script must be run from the repo root — it locates `config/` relative to its own path.
+The script must be run from the repo root - it locates `config/` relative to its own path.
 
 ### 3. After the script completes
 
@@ -63,7 +62,7 @@ The script must be run from the repo root — it locates `config/` relative to i
 | SSL via Let's Encrypt | `certbot --apache -d yoursite.com` |
 | SSL via custom cert | Place `.crt`, `.key`, `.ca-bundle` in `/etc/ssl/` |
 | Finish WordPress install | Visit `https://yoursite.com/wp-admin/install.php` |
-| Tune CSP header | Edit `config/wp-htaccess`, re-run or copy manually |
+| Tune CSP header | Edit `config/wp-htaccess` |
 
 ### Verify SSH before closing your session
 
