@@ -1,6 +1,6 @@
 # server-hardening
 
-Automated Ubuntu server hardening and WordPress deployment script.
+Automated Ubuntu server hardening and WordPress deployment.
 
 ## What it does
 
