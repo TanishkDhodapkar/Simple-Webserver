@@ -342,7 +342,17 @@ configure_fail2ban() {
 }
 
 # ============================================================
-# 14. UFW FIREWALL
+# 15. APACHE HARDNING
+# ============================================================
+
+sed -i \
+-e 's/^ServerTokens.*/ServerTokens Prod/' \
+-e 's/^ServerSignature.*/ServerSignature Off/' \
+-e 's/^TraceEnable.*/TraceEnable Off/' \
+/etc/apache2/conf-available/security.conf
+
+# ============================================================
+# 16. UFW FIREWALL
 # ============================================================
 configure_ufw() {
     info "Configuring UFW firewall..."
