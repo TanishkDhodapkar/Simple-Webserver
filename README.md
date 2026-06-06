@@ -9,6 +9,7 @@ Automated Ubuntu server hardening and WordPress deployment.
 - SSH hardening (custom port, key-only auth)
 - MySQL secure installation + site DB/user creation
 - PHP hardening (disable dangerous functions, session security, etc.)
+- Apache hardning
 - WordPress deployment + wp-config.php generation
 - ModSecurity WAF (enabled, not just detection mode)
 - Apache vhost with HTTP→HTTPS redirect, TLS config, upload PHP block
