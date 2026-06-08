@@ -1,5 +1,4 @@
-# server-hardening
-
+# Webserver With Zabbix
 Automated Ubuntu server hardening and deployment scripts for WordPress and Zabbix.
 
 ## Scripts
@@ -34,16 +33,16 @@ server-hardening/
 
 - System packages + unattended security updates (no auto-reboot)
 - Kernel hardening via sysctl
-- SSH hardening — custom port, key-only auth, strict timeouts
+- SSH hardening - custom port, key-only auth, strict timeouts
 - MySQL secure install + site DB/user creation
-- PHP hardening — disable dangerous functions, session security
+- PHP hardening - disable dangerous functions, session security
 - WordPress deployment + wp-config.php with DB credentials and fresh salts
 - ModSecurity WAF in enforcement mode
-- Apache vhost — HTTP or HTTPS (prompted at runtime)
-- Apache hardening — ServerTokens, ServerSignature, TraceEnable
+- Apache vhost - HTTP or HTTPS (prompted at runtime)
+- Apache hardening - ServerTokens, ServerSignature, TraceEnable
 - fail2ban with SSH + Apache jails
-- UFW firewall — SSH port, 80, 443 only
-- Zabbix agent2 install and config (optional — skipped if ZABBIX_SERVER_IP is empty)
+- UFW firewall - SSH port, 80, 443 only
+- Zabbix agent2 install and config (optional - skipped if ZABBIX_SERVER_IP is empty)
 
 ### Parameters
 
@@ -66,7 +65,6 @@ ZABBIX_SERVER_IP=""
 ZABBIX_AGENT_HOSTNAME="web1"
 ```
 
-> **Never commit real passwords.** Set `DB_PASS` directly on the server, or use an `.env` file (already in `.gitignore`).
 
 ### Vhost selection
 
@@ -98,13 +96,13 @@ If `ZABBIX_SERVER_IP` is left empty, this step is skipped entirely.
 ### Run
 
 ```bash
-git clone https://github.com/youruser/server-hardening.git
-cd server-hardening
+git clone https://github.com/TanishkDhodapkar/WebserverWithZabbix
+cd WebserverWithZabbix
 chmod +x setup.sh
 sudo ./setup.sh
 ```
 
-The script must run from the repo root — it locates `config/` relative to itself.
+The script must run from the repo root - it locates `config/` relative to itself.
 
 ### After the script completes
 
@@ -129,12 +127,9 @@ The script must run from the repo root — it locates `config/` relative to itse
 
 - Installs Zabbix server, frontend, agent2, and SQL scripts
 - MariaDB secure install + Zabbix DB/user creation + schema import
-- Zabbix server configured with DB password
 - SSH key pair generated for connecting to monitored hosts
-- SSH hardening, kernel hardening, PHP hardening
-- Apache hardening + Zabbix security response headers
-- fail2ban with SSH + Apache jails (full jail list, Zabbix-appropriate jails enabled)
-- UFW firewall — SSH port, 80, 443, and port 10051 from monitored server IP only
+- SSH hardening, kernel hardening, PHP hardening, Apache hardening, Zabbix security response headers, UFW firewall and fail2ban
+- SSH port, 80, 443, and port 10051 from monitored server IP only
 - Unattended-upgrades with no auto-reboot
 - snapd disabled and removed
 
@@ -171,8 +166,8 @@ ssh -i /root/.ssh/zabbix_server_id_ed25519 -p 55022 root@<WEB_SERVER_IP>
 ### Run
 
 ```bash
-git clone https://github.com/youruser/server-hardening.git
-cd server-hardening
+git clone https://github.com/TanishkDhodapkar/WebserverWithZabbix
+cd WebserverWithZabbix
 chmod +x zabbix-setup.sh
 sudo ./zabbix-setup.sh
 ```
