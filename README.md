@@ -1,51 +1,101 @@
 # server-hardening
 
-Automated Ubuntu server hardening and WordPress deployment.
+Automated Ubuntu server hardening and deployment scripts for WordPress and Zabbix.
 
-## What it does
+## Scripts
 
-- System packages + unattended security updates
-- Kernel hardening (sysctl)
-- SSH hardening (custom port, key-only auth)
-- MySQL secure installation + site DB/user creation
-- PHP hardening (disable dangerous functions, session security, etc.)
-- Apache hardning
-- WordPress deployment + wp-config.php generation
-- ModSecurity WAF (enabled, not just detection mode)
-- Apache vhost with HTTP→HTTPS redirect, TLS config, upload PHP block
-- fail2ban with Apache + SSH jails
-- UFW firewall (SSH port, 80, 443 only)
+| Script | Purpose |
+|---|---|
+| `setup.sh` | WordPress server — hardening + WordPress deployment + optional Zabbix agent |
+| `zabbix-setup.sh` | Zabbix monitoring server — full install + hardening |
+
+---
 
 ## Directory structure
 
 ```
 server-hardening/
-├── setup.sh                  # Main script — edit variables at the top
+├── setup.sh
+├── zabbix-setup.sh
 └── config/
-    ├── jail.local            # fail2ban jails ({{SSH_PORT}} substituted at runtime)
-    ├── sysctl-hardening.conf # Kernel parameters → /etc/sysctl.d/99-hardening.conf
-    ├── web1.conf             # Apache vhost template ({{SITE_DOMAIN}}, {{DOC_ROOT}}, {{ADMIN_EMAIL}} substituted)
-    └── wp-htaccess           # WordPress .htaccess with security headers
+    ├── sysctl-hardening.conf    # Kernel parameters (used by both scripts)
+    ├── jail.local               # fail2ban jails for WordPress server
+    ├── zabbix-jail.local        # fail2ban jails for Zabbix server
+    ├── web1-http.conf           # Apache vhost template — HTTP only
+    ├── web1-https.conf          # Apache vhost template — HTTPS + TLS
+    └── wp-htaccess              # WordPress .htaccess with security headers
 ```
 
-## Usage
+---
 
-### 1. Set your parameters
+## setup.sh — WordPress server
 
-Edit the variables at the top of `setup.sh`:
+### What it does
+
+- System packages + unattended security updates (no auto-reboot)
+- Kernel hardening via sysctl
+- SSH hardening — custom port, key-only auth, strict timeouts
+- MySQL secure install + site DB/user creation
+- PHP hardening — disable dangerous functions, session security
+- WordPress deployment + wp-config.php with DB credentials and fresh salts
+- ModSecurity WAF in enforcement mode
+- Apache vhost — HTTP or HTTPS (prompted at runtime)
+- Apache hardening — ServerTokens, ServerSignature, TraceEnable
+- fail2ban with SSH + Apache jails
+- UFW firewall — SSH port, 80, 443 only
+- Zabbix agent2 install and config (optional — skipped if ZABBIX_SERVER_IP is empty)
+
+### Parameters
+
+Edit variables at the top of `setup.sh` before running, or leave them as-is to be prompted:
 
 ```bash
 DB_NAME="web1db"
 DB_USER="web1user"
-DB_PASS="your_strong_password_here"
+DB_PASS="CHANGE_ME_STRONG_PASSWORD"
 SITE_DOMAIN="yoursite.com"
 DOC_ROOT="/var/www/web1"
 ADMIN_EMAIL="admin@yoursite.com"
 SSH_PORT="55022"
+
+# "http" or "https" — leave empty to be prompted at runtime
+VHOST_MODE=""
+
+# Set to Zabbix server IP to enable agent install, leave empty to skip
+ZABBIX_SERVER_IP=""
+ZABBIX_AGENT_HOSTNAME="web1"
 ```
 
+> **Never commit real passwords.** Set `DB_PASS` directly on the server, or use an `.env` file (already in `.gitignore`).
 
-### 2. Clone on the server and run
+### Vhost selection
+
+If `VHOST_MODE` is empty, the script prompts at runtime:
+
+```
+  ┌─────────────────────────────────────┐
+  │   Select VirtualHost configuration  │
+  │                                     │
+  │   1) HTTP only  (port 80)           │
+  │   2) HTTPS      (port 443 + TLS)    │
+  └─────────────────────────────────────┘
+  Enter choice [1/2]:
+```
+
+Set `VHOST_MODE="http"` or `VHOST_MODE="https"` to skip the prompt.
+
+### Zabbix agent (optional)
+
+If `ZABBIX_SERVER_IP` is set, the script installs and configures `zabbix-agent2` automatically:
+
+- Installs from the Zabbix repo
+- Sets `Server`, `ServerActive`, and `Hostname` in `zabbix_agent2.conf`
+- Starts and enables the service
+- Opens UFW port 10050 from the Zabbix server IP only
+
+If `ZABBIX_SERVER_IP` is left empty, this step is skipped entirely.
+
+### Run
 
 ```bash
 git clone https://github.com/youruser/server-hardening.git
@@ -54,41 +104,110 @@ chmod +x setup.sh
 sudo ./setup.sh
 ```
 
-The script must be run from the repo root - it locates `config/` relative to its own path.
+The script must run from the repo root — it locates `config/` relative to itself.
 
-### 3. After the script completes
+### After the script completes
 
 | Task | Command |
 |---|---|
 | SSL via Let's Encrypt | `certbot --apache -d yoursite.com` |
 | SSL via custom cert | Place `.crt`, `.key`, `.ca-bundle` in `/etc/ssl/` |
 | Finish WordPress install | Visit `https://yoursite.com/wp-admin/install.php` |
-| Tune CSP header | Edit `config/wp-htaccess` |
+| Tune CSP header | Edit `config/wp-htaccess`, re-run or copy manually |
+| Add host in Zabbix UI | Configuration > Hosts > IP: this server, Port: 10050 |
 
-### Verify SSH before closing your session
+> **Before closing your session, verify SSH access on the new port:**
+> ```bash
+> ssh -p 55022 user@yourserver
+> ```
 
-The script restarts SSH on the custom port. Before closing your current terminal, confirm access in a new one:
+---
+
+## zabbix-setup.sh — Zabbix monitoring server
+
+### What it does
+
+- Installs Zabbix server, frontend, agent2, and SQL scripts
+- MariaDB secure install + Zabbix DB/user creation + schema import
+- Zabbix server configured with DB password
+- SSH key pair generated for connecting to monitored hosts
+- SSH hardening, kernel hardening, PHP hardening
+- Apache hardening + Zabbix security response headers
+- fail2ban with SSH + Apache jails (full jail list, Zabbix-appropriate jails enabled)
+- UFW firewall — SSH port, 80, 443, and port 10051 from monitored server IP only
+- Unattended-upgrades with no auto-reboot
+- snapd disabled and removed
+
+### All parameters are prompted at runtime
+
+When you run the script, you will be asked for:
+
+| Prompt | Default | Notes |
+|---|---|---|
+| Zabbix DB name | `zabbix` | |
+| Zabbix DB user | `zabbix` | |
+| Zabbix DB password | — | Required, no default |
+| Monitored web server IP | — | Required — used for UFW port 10051 rule |
+| SSH port | `55022` | |
+
+A summary is shown before anything runs, with a confirmation prompt.
+
+### SSH key generation
+
+The script generates an `ed25519` key pair at `/root/.ssh/zabbix_server_id_ed25519`.
+
+After generation, the script pauses and displays:
+
+- The **public key** to add to `/root/.ssh/authorized_keys` on the monitored server
+- The exact command to add it remotely
+- The SSH command to connect using the private key
+
+```
+echo 'ssh-ed25519 AAAA...' >> /root/.ssh/authorized_keys
+
+ssh -i /root/.ssh/zabbix_server_id_ed25519 -p 55022 root@<WEB_SERVER_IP>
+```
+
+### Run
 
 ```bash
-ssh -p 55022 user@yourserver
+git clone https://github.com/youruser/server-hardening.git
+cd server-hardening
+chmod +x zabbix-setup.sh
+sudo ./zabbix-setup.sh
 ```
+
+### After the script completes
+
+| Task | Command / URL |
+|---|---|
+| Add SSL | `certbot --apache` |
+| Finish Zabbix web setup | `http://<this-server>/zabbix` |
+| Add monitored host in UI | Configuration > Hosts > IP: web server IP, Port: 10050 |
+| Verify SSH on new port | `ssh -p <SSH_PORT> root@<this-server>` |
+
+---
 
 ## Config file placeholders
 
-Config files use placeholders that `setup.sh` substitutes at deploy time. You never hardcode server-specific values in config files.
+Config files use placeholders substituted by the scripts at deploy time.
 
-| Placeholder | Replaced with |
-|---|---|
-| `{{SITE_DOMAIN}}` | `SITE_DOMAIN` variable |
-| `{{DOC_ROOT}}` | `DOC_ROOT` variable |
-| `{{ADMIN_EMAIL}}` | `ADMIN_EMAIL` variable |
-| `{{SSH_PORT}}` | `SSH_PORT` variable (in `jail.local` only) |
+| Placeholder | Used in | Replaced with |
+|---|---|---|
+| `{{SITE_DOMAIN}}` | `web1-http.conf`, `web1-https.conf` | `SITE_DOMAIN` |
+| `{{DOC_ROOT}}` | `web1-http.conf`, `web1-https.conf` | `DOC_ROOT` |
+| `{{ADMIN_EMAIL}}` | `web1-http.conf`, `web1-https.conf` | `ADMIN_EMAIL` |
+| `{{SSH_PORT}}` | `jail.local`, `zabbix-jail.local` | `SSH_PORT` |
+
+---
 
 ## Re-running
 
-The script is safe to re-run:
+Both scripts are safe to re-run:
 
 - WordPress download skipped if `DOC_ROOT` already exists
+- Zabbix schema import skipped if tables already exist in the DB
+- SSH key generation skipped if key file already exists
 - Config files backed up with `.bak` before overwriting
-- MySQL uses `CREATE IF NOT EXISTS` for DB and user
-- UFW is reset before re-applying rules
+- MySQL/MariaDB use `CREATE IF NOT EXISTS`
+- UFW reset before re-applying rules
